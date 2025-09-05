@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+  
+  body {
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400;
+  }
+}
+
+@layer components {
+  /* Modal backdrop */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-modal;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Loading states */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  /* Draggable elements */
+  .draggable {
+    @apply cursor-grab select-none active:cursor-grabbing;
+  }
+
+  /* Form validation states */
+  .form-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500;
+  }
+
+  .form-success {
+    @apply border-green-500 focus:border-green-500 focus:ring-green-500;
+  }
+
+  /* Animation for active filters */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area utilities for mobile */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Prevent button container shift */
+  .modal-footer-fixed {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0 0 0.75rem 0.75rem;
+  }
+  
+  /* Stable button container */
+  .button-container-stable {
+    display: flex;
+    width: 100%;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  
+  .button-container-stable > button {
+    flex: 1;
+    min-width: 0;
+  }
+  /* Add margin bottom to last form field */
+  .filter-form-container > *:last-child {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Alternative: More specific selector */
+  .scrollable-content > div:last-child {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Dark mode support */
+.dark {
+  @apply bg-gray-900 text-gray-100;
+}
+
+.dark .card {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.dark .filter-chip {
+  @apply bg-blue-900 text-blue-100;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
