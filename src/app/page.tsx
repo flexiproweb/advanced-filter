@@ -73,7 +73,7 @@ export default function Home() {
   // Use current filters (real-time) instead of applied filters
   const currentActiveFiltersCount = Object.values(filters).filter(Boolean).length;
 
-  const handleApplyFilters = (newFilters: FilterState) => {
+  const handleApplyFilters = () => {
     // Just close the modal, filters are already being updated in real-time
     setIsFilterModalOpen(false);
   };
