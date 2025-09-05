@@ -59,8 +59,8 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({
         onToggleCollapse={onToggleCollapse}
         onToggleMinimize={onToggleMinimize}
         onReset={onReset}
-        onClear={onClear}
-        // onClose={onClose} // Pass the close function
+        // onClear={onClear}
+        onClose={onClose}
       />
     </div>
   );

@@ -9,7 +9,7 @@ interface PanelControlsProps {
   onToggleCollapse: () => void;
   onToggleMinimize: () => void;
   onReset: () => void; // Position reset
-  onClear: () => void; // Filter reset
+  // onClear: () => void; // Filter reset
   onClose?: () => void;
 }
 
@@ -18,7 +18,7 @@ const PanelControls: React.FC<PanelControlsProps> = ({
   onToggleCollapse,
   onToggleMinimize,
   onReset,
-  onClear,
+  // onClear,
   onClose,
 }) => {
   return (
@@ -44,13 +44,7 @@ const PanelControls: React.FC<PanelControlsProps> = ({
       >
         <Icon icon={RotateCcw} size={16} />
       </button>
-      <button
-        onClick={onClear}
-        className="p-2 hover:bg-blue-600 rounded-lg transition-colors"
-        title="Clear all filters"
-      >
-        <Icon icon={X} size={16} />
-      </button>
+
       {onClose && (
         <button
           onClick={onClose}
