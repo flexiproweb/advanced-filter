@@ -4,19 +4,11 @@
 import { useState } from 'react';
 import FilterChip from '@/components/molecules/FilterChip';
 import CasesTable from '@/components/organisms/CasesTable';
-import DraggableFilterModal from '@/components/organisms/DraggableFilterModal';
 import Button from '@/components/atoms/Button';
-import { FilterState, CaseData } from '@/types';
-
-const initialFilters: FilterState = {
-  caseNumber: '',
-  caseType: '',
-  reason: '',
-  status: '',
-  type: '',
-  targetValue: '',
-  appliedDate: '',
-};
+import { AdvancedFilter, useAdvancedFilter } from '@/components/AdvancedFilterSystem';
+import { FilterField, FilterValues } from '@/components/AdvancedFilterSystem/types';
+import { CaseData } from '@/types';
+import DraggableAdvancedFilterModal from '@/components/organisms/DraggableFilterModal';
 
 const mockCases: CaseData[] = [
   { 
@@ -67,47 +59,178 @@ const mockCases: CaseData[] = [
 ];
 
 export default function Home() {
-  const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Use current filters (real-time) instead of applied filters
-  const currentActiveFiltersCount = Object.values(filters).filter(Boolean).length;
+  // Define filter fields for the advanced filter
+  const filterFields: FilterField[] = [
+    {
+      key: 'caseNumber',
+      label: 'Case Number',
+      type: 'search',
+      placeholder: 'Search by case number...',
+    },
+    {
+      key: 'caseType',
+      label: 'Case Type',
+      type: 'select',
+      options: [
+        { value: 'Quality Deviations', label: 'Quality Deviations' },
+        { value: 'Demo Scheduled Case', label: 'Demo Scheduled Case' },
+        { value: 'Production Issue', label: 'Production Issue' },
+        { value: 'Maintenance', label: 'Maintenance' },
+      ],
+    },
+    {
+      key: 'reason',
+      label: 'Reason',
+      type: 'select',
+      options: [
+        { value: 'QA7', label: 'QA7' },
+        { value: 'BG_RS_SCH_002', label: 'BG_RS_SCH_002' },
+        { value: 'QUALITY_CHECK', label: 'QUALITY_CHECK' },
+        { value: 'MAINTENANCE_REQUIRED', label: 'MAINTENANCE_REQUIRED' },
+      ],
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'multiselect',
+      options: [
+        { value: 'DRAFT', label: 'Draft' },
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'COMPLETED', label: 'Completed' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+        { value: 'PENDING', label: 'Pending' },
+      ],
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      options: [
+        { value: 'urgent', label: 'Urgent' },
+        { value: 'normal', label: 'Normal' },
+        { value: 'low', label: 'Low Priority' },
+      ],
+    },
+    {
+      key: 'targetValue',
+      label: 'Target Value',
+      type: 'text',
+      placeholder: 'Enter target value...',
+    },
+    {
+      key: 'appliedDate',
+      label: 'Applied Date Range',
+      type: 'daterange',
+    },
+  ];
+
+  // Use the advanced filter hook
+  const {
+    values: filterValues,
+    setValues: setFilterValues,
+    resetFilters,
+    hasActiveFilters,
+    activeFilterCount,
+    getFilteredData,
+  } = useAdvancedFilter(filterFields, {}, {
+    persistKey: 'hold-management-filters',
+  });
+
+  // Custom filter logic for cases
+  const filteredCases = getFilteredData(mockCases, (caseItem, filters) => {
+    // Case Number search
+    if (filters.caseNumber) {
+      const searchTerm = filters.caseNumber.toLowerCase();
+      if (!caseItem.associatedCase.toLowerCase().includes(searchTerm)) {
+        return false;
+      }
+    }
+
+    // Case Type filter
+    if (filters.caseType && caseItem.caseType !== filters.caseType) {
+      return false;
+    }
+
+    // Reason filter
+    if (filters.reason && caseItem.reason !== filters.reason) {
+      return false;
+    }
+
+    // Status multiselect filter
+    if (filters.status?.length > 0 && !filters.status.includes(caseItem.status)) {
+      return false;
+    }
+
+    // Target Value filter
+    if (filters.targetValue) {
+      const searchTerm = filters.targetValue.toLowerCase();
+      if (!caseItem.targetValue.toLowerCase().includes(searchTerm)) {
+        return false;
+      }
+    }
+
+    // Date range filter
+    if (filters.appliedDate?.start || filters.appliedDate?.end) {
+      const caseDate = new Date(caseItem.appliedDate);
+      if (filters.appliedDate.start && caseDate < new Date(filters.appliedDate.start)) {
+        return false;
+      }
+      if (filters.appliedDate.end && caseDate > new Date(filters.appliedDate.end)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   const handleApplyFilters = () => {
-    // Just close the modal, filters are already being updated in real-time
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
-    const clearedFilters = { ...initialFilters };
-    setFilters(clearedFilters);
+    resetFilters();
   };
 
-  const handleRemoveFilter = (field: keyof FilterState) => {
-    const newFilters = { ...filters, [field]: '' };
-    setFilters(newFilters);
+  const handleRemoveFilter = (field: string) => {
+    const fieldDef = filterFields.find(f => f.key === field);
+    if (fieldDef) {
+      const defaultValue = fieldDef.type === 'multiselect' ? [] : 
+                          fieldDef.type === 'daterange' ? { start: '', end: '' } : '';
+      setFilterValues({ ...filterValues, [field]: defaultValue });
+    }
   };
 
   const getActiveFilters = () => {
-    const active: Array<{ key: string; value: string; field: keyof FilterState }> = [];
+    const active: Array<{ key: string; value: string; field: string }> = [];
     
-    // Use current filters instead of applied filters for real-time display
-    Object.entries(filters).forEach(([field, value]) => {
-      if (value && value !== '') {
-        const displayNames: Record<keyof FilterState, string> = {
+    Object.entries(filterValues).forEach(([field, value]) => {
+      if (value && value !== '' && (!Array.isArray(value) || value.length > 0)) {
+        const fieldDef = filterFields.find(f => f.key === field);
+        const displayNames: Record<string, string> = {
           caseNumber: 'Case Number',
-          caseType: 'case Type', // lowercase 'c' to match image
+          caseType: 'case Type',
           reason: 'Reason',
-          status: 'status', // lowercase 's' to match image
-          type: 'type', // lowercase 't' to match image
+          status: 'status',
+          type: 'type',
           targetValue: 'Target Value',
           appliedDate: 'Applied Date',
         };
         
+        let displayValue: string;
+        if (Array.isArray(value)) {
+          displayValue = value.join(', ');
+        } else if (typeof value === 'object' && value?.start && value?.end) {
+          displayValue = `${value.start} - ${value.end}`;
+        } else {
+          displayValue = String(value);
+        }
+        
         active.push({
-          key: displayNames[field as keyof FilterState],
-          value: value,
-          field: field as keyof FilterState,
+          key: displayNames[field] || fieldDef?.label || field,
+          value: displayValue,
+          field: field,
         });
       }
     });
@@ -125,11 +248,13 @@ export default function Home() {
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Hold Management System</h1>
           
           {/* Filter Section - Only show when there are active filters */}
-          {currentActiveFiltersCount > 0 && (
+          {hasActiveFilters && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-700">Active Filters:</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Active Filters ({activeFilterCount}):
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {activeFilters.map((filter, index) => (
                       <FilterChip
@@ -152,22 +277,30 @@ export default function Home() {
           )}
 
           {/* Advanced Filters Button - Always visible */}
-          <div className="flex justify-end mb-6">
+          <div className="flex justify-between items-center mb-6">
+            <div className="text-sm text-gray-600">
+              Showing <span className="font-medium">{filteredCases.length}</span> of{' '}
+              <span className="font-medium">{mockCases.length}</span> cases
+              {hasActiveFilters && (
+                <span className="ml-2 text-blue-600">(filtered)</span>
+              )}
+            </div>
             <Button onClick={() => setIsFilterModalOpen(true)}>
-              Advanced Filters
+              Advanced Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
             </Button>
           </div>
 
           {/* Data Table */}
-          <CasesTable cases={mockCases} />
+          <CasesTable cases={filteredCases} />
         </div>
       </div>
 
-      {/* Draggable Filter Modal */}
+      {/* Advanced Filter Modal */}
       {isFilterModalOpen && (
-        <DraggableFilterModal
-          filters={filters}
-          onFiltersChange={setFilters} // Real-time updates
+        <DraggableAdvancedFilterModal
+          fields={filterFields}
+          values={filterValues}
+          onChange={setFilterValues}
           onApplyFilters={handleApplyFilters}
           onClearFilters={handleClearFilters}
           onClose={() => setIsFilterModalOpen(false)}

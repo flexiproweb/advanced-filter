@@ -1,3 +1,14 @@
+// src/types/index.ts
+export interface FilterState {
+  caseNumber: string;
+  caseType: string;
+  reason: string;
+  status: string;
+  type: string;
+  targetValue: string;
+  appliedDate: string;
+}
+
 export interface CaseData {
   id: number;
   associatedCase: string;
@@ -8,15 +19,9 @@ export interface CaseData {
   appliedDate: string;
 }
 
-export interface FilterState {
-  caseNumber: string;
-  caseType: string;
-  reason: string;
-  status: string;
-  type: string;
-  targetValue: string;
-  appliedDate: string;
-}
+// Import the advanced filter types
+export * from '../components/AdvancedFilterSystem/types';
+
 
 export interface FilterOption {
   value: string;

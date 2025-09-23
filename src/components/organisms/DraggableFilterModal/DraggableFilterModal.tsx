@@ -1,285 +1,174 @@
-// src/components/organisms/DraggableFilterModal/DraggableFilterModal.tsx
+// src/components/organisms/DraggableAdvancedFilterModal.tsx
 'use client';
 
-import { useEffect } from 'react';
-import { useDragAndDrop } from '@/hooks/useDragAndDrop';
-import { useResize } from '@/hooks/useResize';
-import ModalHeader from '@/components/molecules/ModalHeader';
-import FormField from '@/components/molecules/FormField';
-import ResizeHandle from '@/components/molecules/ResizeHandle';
+import React, { useState, useRef, useEffect } from 'react';
+import { AdvancedFilter } from '@/components/AdvancedFilterSystem';
+import { FilterField, FilterValues } from '@/components/AdvancedFilterSystem/types';
 import Button from '@/components/atoms/Button';
-import { FilterState, FilterOption } from '@/types';
 
-interface DraggableFilterModalProps {
-    filters: FilterState;
-    onFiltersChange: (filters: FilterState) => void;
-    onApplyFilters: (filters: FilterState) => void;
-    onClearFilters: () => void;
-    onClose: () => void;
+interface DraggableAdvancedFilterModalProps {
+  fields: FilterField[];
+  values: FilterValues;
+  onChange: (values: FilterValues) => void;
+  onApplyFilters: () => void;
+  onClearFilters: () => void;
+  onClose: () => void;
 }
 
-const filterOptions = {
-    caseType: [
-        { value: '', label: 'Choose...' },
-        { value: 'Quality Deviations', label: 'Quality Deviations' },
-        { value: 'Demo Scheduled Case', label: 'Demo Scheduled Case' },
-        { value: 'Production Issue', label: 'Production Issue' },
-    ] as FilterOption[],
-    reason: [
-        { value: '', label: 'Choose...' },
-        { value: 'QA7', label: 'QA7' },
-        { value: 'BG_RS_SCH_002', label: 'BG_RS_SCH_002' },
-        { value: 'QUALITY_CHECK', label: 'QUALITY_CHECK' },
-    ] as FilterOption[],
-    status: [
-        { value: '', label: 'Choose...' },
-        { value: 'DRAFT', label: 'DRAFT' },
-        { value: 'ACTIVE', label: 'ACTIVE' },
-        { value: 'COMPLETED', label: 'COMPLETED' },
-        { value: 'CANCELLED', label: 'CANCELLED' },
-    ] as FilterOption[],
-    type: [
-        { value: '', label: 'Choose...' },
-        { value: 'Quality Hold', label: 'Quality Hold' },
-        { value: 'SKU', label: 'SKU' },
-        { value: 'Inventory Hold', label: 'Inventory Hold' },
-    ] as FilterOption[],
-};
-
-const DraggableFilterModal: React.FC<DraggableFilterModalProps> = ({
-    filters,
-    onFiltersChange,
-    onApplyFilters,
-    onClearFilters,
-    onClose,
+const DraggableAdvancedFilterModal: React.FC<DraggableAdvancedFilterModalProps> = ({
+  fields,
+  values,
+  onChange,
+  onApplyFilters,
+  onClearFilters,
+  onClose,
 }) => {
-    // Calculate center position
-    const getInitialPosition = () => {
-        const modalWidth = 380;
-        const modalHeight = 528;
-        return {
-            x: Math.max(0, (window.innerWidth - modalWidth) / 2),
-            y: Math.max(0, (window.innerHeight - modalHeight) / 2),
-            width: modalWidth,
-            height: modalHeight,
-            isMinimized: false,
-            isCollapsed: false,
-        };
-    };
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const modalRef = useRef<HTMLDivElement>(null);
 
-    const {
-        panelState,
-        setPanelState,
-        dragState,
-        panelRef,
-        handleDragStart,
-        handleDragMove,
-        handleDragEnd,
-        resetPanel,
-        toggleMinimize,
-        toggleCollapse,
-    } = useDragAndDrop(getInitialPosition());
+  useEffect(() => {
+    // Center the modal on first render
+    if (modalRef.current) {
+      const rect = modalRef.current.getBoundingClientRect();
+      setPosition({
+        x: (window.innerWidth - rect.width) / 2,
+        y: (window.innerHeight - rect.height) / 2,
+      });
+    }
+  }, []);
 
-    const { resizeState, handleResizeStart, handleResizeMove, handleResizeEnd } = useResize(
-        panelState,
-        (updates: any) => setPanelState((prev: any) => ({ ...prev, ...updates }))
-    );
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('drag-handle')) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      });
+    }
+  };
 
-    const activeFiltersCount = Object.values(filters).filter(Boolean).length;
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  };
 
-    const updateFilter = (key: keyof FilterState, value: string) => {
-        onFiltersChange({ ...filters, [key]: value });
-    };
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
-    const handleApply = () => {
-        onApplyFilters(filters);
-    };
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart.x, dragStart.y]);
 
-    // Reset button works same as clear button
-    const handleReset = () => {
-        onClearFilters(); // Same functionality as clear button
-    };
+  const activeFilterCount = Object.values(values).filter(value => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object' && value !== null) {
+      return Object.values(value).some(v => v !== '' && v !== null);
+    }
+    return value !== '' && value !== null && value !== undefined;
+  }).length;
 
-    const handleClose = () => {
-        onClose();
-    };
-
-    // Global mouse event handlers
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            handleDragMove(e);
-            handleResizeMove(e);
-        };
-
-        const handleMouseUp = () => {
-            handleDragEnd();
-            handleResizeEnd();
-        };
-
-        if (dragState.isDragging || resizeState.isResizing) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            document.body.style.userSelect = 'none';
-
-            document.body.style.cursor = resizeState.isResizing ? `${resizeState.direction}-resize` : 'default';
-
-            return () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-                document.body.style.userSelect = '';
-                document.body.style.cursor = '';
-            };
-        }
-    }, [dragState.isDragging, resizeState.isResizing, handleDragMove, handleResizeMove, handleDragEnd, handleResizeEnd]);
-
-    const currentHeight = panelState.isMinimized ? 50 : panelState.height;
-
-    return (
-        <>
-            {/* Background overlay - only show when not minimized */}
-            {!panelState.isMinimized && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 z-modal" onClick={handleClose} />
-            )}
-
-            <div
-                ref={panelRef}
-                className={`fixed bg-white rounded-xl shadow-2xl border-2 transition-all duration-200 z-modal ${dragState.isDragging ? 'shadow-3xl ring-2 ring-blue-400 ring-opacity-50' : 'border-gray-200'
-                    } ${resizeState.isResizing ? 'ring-2 ring-green-400 ring-opacity-50' : ''}`}
-                style={{
-                    left: `${panelState.x}px`,
-                    top: `${panelState.y}px`,
-                    width: `${panelState.width}px`,
-                    height: `${currentHeight}px`,
-                    minWidth: '320px',
-                    minHeight: panelState.isMinimized ? '50px' : '350px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}
-            >
-                {/* Resize Handles */}
-                {!panelState.isMinimized && (
-                    <>
-                        <ResizeHandle direction="nw" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="ne" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="sw" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="se" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="n" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="s" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="w" onMouseDown={handleResizeStart} />
-                        <ResizeHandle direction="e" onMouseDown={handleResizeStart} />
-                    </>
-                )}
-
-                <ModalHeader
-                    title="Advanced Filters"
-                    filterCount={activeFiltersCount}
-                    isMinimized={panelState.isMinimized}
-                    onMouseDown={handleDragStart}
-                    onToggleCollapse={toggleCollapse}
-                    onToggleMinimize={toggleMinimize}
-                    onReset={handleReset} // Position reset
-                    onClear={handleReset} // Filter reset (same as clear)
-                    onClose={handleClose}
-                    isDragging={dragState.isDragging}
-                />
-
-                {/* Panel Content */}
-                {!panelState.isMinimized && !panelState.isCollapsed && (
-                    <>
-                        {/* Scrollable Content Area */}
-                        <div
-                            className="flex-1 overflow-y-auto p-4 space-y-4 no-drag no-scrollbar"
-                            style={{
-                                height: `${currentHeight - 64 - 80}px`,
-                                minHeight: '200px',
-                                maxHeight: `${currentHeight - 64 - 80}px`
-                            }}
-                        >
-                            <FormField
-                                label="Case Number"
-                                placeholder="Enter case number"
-                                value={filters.caseNumber}
-                                onChange={(value) => updateFilter('caseNumber', value)}
-                            />
-
-                            <FormField
-                                label="Case Type"
-                                type="select"
-                                options={filterOptions.caseType}
-                                value={filters.caseType}
-                                onChange={(value) => updateFilter('caseType', value)}
-                            />
-
-                            <FormField
-                                label="Reason"
-                                type="select"
-                                options={filterOptions.reason}
-                                value={filters.reason}
-                                onChange={(value) => updateFilter('reason', value)}
-                            />
-
-                            <FormField
-                                label="Status"
-                                type="select"
-                                options={filterOptions.status}
-                                value={filters.status}
-                                onChange={(value) => updateFilter('status', value)}
-                            />
-
-                            <FormField
-                                label="Type"
-                                type="select"
-                                options={filterOptions.type}
-                                value={filters.type}
-                                onChange={(value) => updateFilter('type', value)}
-                            />
-
-                            <FormField
-                                label="Target Value"
-                                placeholder="Enter target value"
-                                value={filters.targetValue}
-                                onChange={(value) => updateFilter('targetValue', value)}
-                            />
-
-                            {/* Applied Date with conditional margin */}
-            
-                            <FormField
-                                label="Applied Date"
-                                inputType="date"
-                                value={filters.appliedDate}
-                                onChange={(value) => updateFilter('appliedDate', value)}
-                                className={filters.appliedDate && filters.appliedDate.trim() !== '' ? 'mb-6' : ''}
-                            />
-
-                        </div>
-
-                        {/* Fixed Footer */}
-                        <div
-                            className="absolute bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-200 rounded-b-xl no-drag"
-                            style={{ height: '80px' }}
-                        >
-                            <div className="p-4 h-full flex items-center">
-                                <div className="flex w-full gap-3">
-                                    <button
-                                        onClick={handleApply}
-                                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
-                                    >
-                                        Apply Filters
-                                    </button>
-                                    <button
-                                        onClick={onClearFilters}
-                                        className="flex-1 bg-gray-100 text-gray-900 border border-gray-300 py-2 px-4 rounded-md hover:bg-gray-200 transition-colors font-medium"
-                                    >
-                                        Clear
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />
+      
+      {/* Modal */}
+      <div
+        ref={modalRef}
+        className={`fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 ${
+          isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
+        }`}
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px)`,
+          width: '900px',
+          maxWidth: '90vw',
+          maxHeight: '80vh',
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        {/* Header */}
+        <div className="drag-handle flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 text-gray-400">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+              </svg>
             </div>
-        </>
-    );
+            <h2 className="text-xl font-semibold text-gray-900">
+              Advanced Filters
+              {activeFilterCount > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full">
+                  {activeFilterCount}
+                </span>
+              )}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <AdvancedFilter
+            fields={fields}
+            values={values}
+            onChange={onChange}
+            layout="grid"
+            gridColumns={2}
+            showActiveFilters={false} // We show them in the main page
+            showApplyButton={false} // We have custom buttons
+            showResetButton={false}
+            realTimeFilter={true}
+            className="border-0 shadow-none bg-transparent p-0"
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+          <button
+            onClick={onClearFilters}
+            className="text-gray-600 hover:text-gray-800 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Clear All Filters
+          </button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={onClose}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-300"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={onApplyFilters}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Apply Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 };
 
-export default DraggableFilterModal;
+export default DraggableAdvancedFilterModal;
